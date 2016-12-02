@@ -1,27 +1,40 @@
-import org.antlr.v4.runtime.tree.ParseTreeProperty;
+import java.util.HashMap;
 
+import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
 public class UcodeGenListener extends MiniCBaseListener{
 	ParseTreeProperty<String> newTexts = new ParseTreeProperty<String>();
-	private int block = 0;
-	private int offset = 0;
+	HashMap<String, Object> hashMap = new HashMap<String, Object>();
+	
+	private String space = "           ";
+	private int offset = 1;
 	
 	@Override
+	public void enterProgram(MiniCParser.ProgramContext ctx) {
+		hashMap.put("varSize", 0);
+		super.enterProgram(ctx);
+	}
+
+	@Override
 	public void exitProgram(MiniCParser.ProgramContext ctx) {
-		for(MiniCParser.DeclContext d : ctx.decl()){
+		int varSize = (int)hashMap.get("varSize");
+		
+		for(MiniCParser.DeclContext d : ctx.decl()) {
 			System.out.println(newTexts.get(d));
 		}
+
+		System.out.println(space + "bgn " + varSize + "\n" + space + "call main\n" +space + "end");
 	}
 
 	@Override
 	public void exitDecl(MiniCParser.DeclContext ctx) {
 		String decl;
 		
-		if(ctx.var_decl() == null){
+		if(ctx.var_decl() == null) {
 			decl = newTexts.get(ctx.fun_decl());
 		}
 		
-		else{
+		else {
 			decl = newTexts.get(ctx.var_decl());
 		}
 		
@@ -35,29 +48,38 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String semicolon = ctx.getChild(ctx.getChildCount() - 1).getText();	// ;
 		String varDecl;
 		
-		if(ctx.getChildCount() == 3){	// type_spec IDENT ';'
-			varDecl = typeSpec + " " + ident + semicolon;
+		int base = 1;
+		
+		if(ctx.getChildCount() == 3) {	// type_spec IDENT ';'
+			varDecl = space + "sym " + base + " " + offset + " " + 1;
+			offset++;
 		}
 
-		else if(ctx.getChildCount() == 5){	// type_spec IDENT '=' LITERAL ';'
-			String equal = ctx.getChild(2).getText();
+		else if(ctx.getChildCount() == 5) {	// type_spec IDENT '=' LITERAL ';'
 			String literal = ctx.LITERAL().getText();
-			varDecl = typeSpec + " " + ident + " " + equal + " " + literal + semicolon;
+			varDecl = space + "sym " + base + " " + offset + " " + 1 + "\n" + space + "ldc " + literal + "\n" + space + "str " + base + " " + offset;
+			offset++;
 		}
 		
-		else{	// type_spec IDENT '[' LITERAL ']' ';'
-			String squareBracket1 = ctx.getChild(2).getText();
-			String squareBracket2 = ctx.getChild(4).getText();
+		else {	// type_spec IDENT '[' LITERAL ']' ';'
 			String literal = ctx.LITERAL().getText();
-			varDecl = typeSpec + " " + ident + squareBracket1 + literal + squareBracket2 + semicolon;
+			varDecl = space + "sym " + base + " " + offset + " " + literal;
+			offset += Integer.parseInt(literal);
 		}
 		
-		newTexts.put(ctx, varDecl + "");
+		hashMap.put("varSize", offset - 1);
+		newTexts.put(ctx, varDecl);
 	}
 
 	@Override
 	public void exitType_spec(MiniCParser.Type_specContext ctx) {
 		newTexts.put(ctx, ctx.getChild(0).getText());
+	}
+
+	@Override
+	public void enterFun_decl(MiniCParser.Fun_declContext ctx) {
+		offset = 1;
+		super.enterFun_decl(ctx);
 	}
 
 	@Override
@@ -69,11 +91,29 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String parens2 = ctx.getChild(4).getText();
 		String compound_stmt = newTexts.get(ctx.compound_stmt());
 		
-		block++;
-		String proc =  ident + "       proc " + ctx.compound_stmt().local_decl().size() + " " + block + " " + block;
-		block--;
-		offset = 0;
-		newTexts.put(ctx, proc + "\n" + compound_stmt);
+		int localSize = 0;
+		int blockNumber = 2;
+		int lexicalLevel = 2;
+		MiniCParser.Local_declContext localDecl;
+		
+		if(ctx.compound_stmt().local_decl() != null) {
+			for(MiniCParser.Local_declContext l : ctx.compound_stmt().local_decl()) {
+				if(l.getChildCount() == 3 || l.getChildCount() == 5) {
+					localSize++;
+				}
+				
+				else {
+					localSize += Integer.parseInt(l.getChild(3).toString());
+				}				
+			}
+		}
+		
+		for(MiniCParser.ParamContext p : ctx.params().param()) {
+			localSize++;
+		}
+		
+		String proc =  ident + space.substring(ident.length() - 1, space.length() - 1) + "proc " + localSize + " " + blockNumber + " " + lexicalLevel;
+		newTexts.put(ctx, proc + "\n" + compound_stmt + "\n" + space + "end");
 	}
 
 	@Override
@@ -177,27 +217,26 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String semicolon = ctx.getChild(ctx.getChildCount() - 1).getText();	// ;
 		String localDecl;
 		
-		if(ctx.getChildCount() == 3){	// type_spec IDENT ';'
-			block++;
+		int base = 2;
+		
+		if(ctx.getChildCount() == 3) {	// type_spec IDENT ';'
+			localDecl = space + "sym " + base + " " + offset + " " + 1;
 			offset++;
-			localDecl = "           sym " + block + " " + offset + " " + 1;
-			block--;
 		}
 
-		else if(ctx.getChildCount() == 5){	// type_spec IDENT '=' LITERAL ';'
-			String equal = ctx.getChild(2).getText();
+		else if(ctx.getChildCount() == 5) {	// type_spec IDENT '=' LITERAL ';'
 			String literal = ctx.LITERAL().getText();
-			localDecl = typeSpec + " " + ident + " " + equal + " " + literal + semicolon;
+			localDecl = space + "sym " + base + " " + offset + " " + 1 + "\n" + space + "ldc " + literal + "\n" + space + "str " + base + " " + offset;
+			offset++;
 		}
 		
-		else{	// type_spec IDENT '[' LITERAL ']' ';'
-			String squareBracket1 = ctx.getChild(2).getText();
-			String squareBracket2 = ctx.getChild(4).getText();
+		else {	// type_spec IDENT '[' LITERAL ']' ';'
 			String literal = ctx.LITERAL().getText();
-			localDecl = typeSpec + " " + ident + squareBracket1 + literal + squareBracket2 + semicolon;
+			localDecl = space + "sym " + base + " " + offset + " " + 1;
+			offset += Integer.parseInt(literal);
 		}
 		
-		newTexts.put(ctx, localDecl + "");
+		newTexts.put(ctx, localDecl);
 	}
 
 	@Override
