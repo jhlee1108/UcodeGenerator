@@ -8,12 +8,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 	
 	private String space = "           ";
 	private int offset = 1;
-	
-	@Override
-	public void enterProgram(MiniCParser.ProgramContext ctx) {
-		hashMap.put("varSize", 0);
-		super.enterProgram(ctx);
-	}
+	private int labelNumber = 0;
 
 	@Override
 	public void exitProgram(MiniCParser.ProgramContext ctx) {
@@ -49,6 +44,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String varDecl;
 		
 		int base = 1;
+		hashMap.put(ident, base + " " + offset);
 		
 		if(ctx.getChildCount() == 3) {	// type_spec IDENT ';'
 			varDecl = space + "sym " + base + " " + offset + " " + 1;
@@ -91,29 +87,16 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String parens2 = ctx.getChild(4).getText();
 		String compound_stmt = newTexts.get(ctx.compound_stmt());
 		
-		int localSize = 0;
+		int localSize = (int)hashMap.get("localSize");
 		int blockNumber = 2;
 		int lexicalLevel = 2;
-		MiniCParser.Local_declContext localDecl;
-		
-		if(ctx.compound_stmt().local_decl() != null) {
-			for(MiniCParser.Local_declContext l : ctx.compound_stmt().local_decl()) {
-				if(l.getChildCount() == 3 || l.getChildCount() == 5) {
-					localSize++;
-				}
-				
-				else {
-					localSize += Integer.parseInt(l.getChild(3).toString());
-				}				
-			}
-		}
 		
 		for(MiniCParser.ParamContext p : ctx.params().param()) {
 			localSize++;
 		}
 		
-		String proc =  ident + space.substring(ident.length() - 1, space.length() - 1) + "proc " + localSize + " " + blockNumber + " " + lexicalLevel;
-		newTexts.put(ctx, proc + "\n" + compound_stmt + "\n" + space + "end");
+		String proc =  ident + space.substring(ident.length(), space.length()) + "proc " + localSize + " " + blockNumber + " " + lexicalLevel;
+		newTexts.put(ctx, proc + "\n" + compound_stmt + "\n" + space + "ret" + "\n" + space + "end");
 	}
 
 	@Override
@@ -178,15 +161,19 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String stmt = newTexts.get(ctx.stmt());
 		String whileStmt;
 		
-		if(ctx.stmt().compound_stmt() == null){
+		String labelLoop = "$$" + labelNumber++;
+		String labelEnd = "$$" + labelNumber++;
+		String textStart = labelLoop + space.substring(labelLoop.length(), space.length()) + "nop";
+		String textEnd = labelEnd + space.substring(labelEnd.length(), space.length()) + "nop";
+		/*if(ctx.stmt().compound_stmt() == null){
 			stmt = stmt + "\n";
 			whileStmt = WHILE + " " + parens1 + expr + parens2 + "\n" + "{\n" + stmt + "}";
 		}
 		else{
 			whileStmt = WHILE + " " + parens1 + expr + parens2 + "\n" + stmt;
-		}
+		}*/
 		
-		newTexts.put(ctx, whileStmt);
+		newTexts.put(ctx, textStart + "\n" + expr + "\n" + space + "fjp " + labelEnd + "\n" + stmt + "\n" + space + "ujp " + labelLoop + "\n" + textEnd);
 	}
 
 	@Override
@@ -199,15 +186,11 @@ public class UcodeGenListener extends MiniCBaseListener{
 			localDeclAndStmt.append(newTexts.get(l) + "\n");
 		}
 		
-		if(ctx.local_decl(0) != null){
-			localDeclAndStmt.append("\n");
-		}
-		
 		for(MiniCParser.StmtContext s : ctx.stmt()){
 			localDeclAndStmt.append(newTexts.get(s) + "\n");
 		}
 		
-		newTexts.put(ctx, localDeclAndStmt + "");
+		newTexts.put(ctx, localDeclAndStmt.substring(0, localDeclAndStmt.length() - 1));
 	}
 
 	@Override
@@ -218,6 +201,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 		String localDecl;
 		
 		int base = 2;
+		hashMap.put(ident, base + " " + offset);
 		
 		if(ctx.getChildCount() == 3) {	// type_spec IDENT ';'
 			localDecl = space + "sym " + base + " " + offset + " " + 1;
@@ -236,6 +220,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 			offset += Integer.parseInt(literal);
 		}
 		
+		hashMap.put("localSize", offset - 1);
 		newTexts.put(ctx, localDecl);
 	}
 
@@ -295,29 +280,69 @@ public class UcodeGenListener extends MiniCBaseListener{
 	public void exitExpr(MiniCParser.ExprContext ctx) {
 		String expr1, expr2, op, parens1, parens2, ident;
 		
-		if(ctx.getChildCount() == 1){
-			newTexts.put(ctx, ctx.getChild(0).getText());
+		if(ctx.getChildCount() == 1) {
+			if(ctx.LITERAL() != null)
+				newTexts.put(ctx, space + "ldc " + ctx.getChild(0).getText());
+			else
+				newTexts.put(ctx, space + "lod " + hashMap.get(ctx.getChild(0).getText()));
 		}
 		
 		else if(ctx.getChildCount() == 2){
 			op = ctx.getChild(0).getText();
 			expr1 = newTexts.get(ctx.expr(0));
-			newTexts.put(ctx, op + expr1);
+			
+			if(op.equals("-")) // '-' expr
+				newTexts.put(ctx, space + "neg" + "\n" + expr1);
+			else if(op.equals("--")) // '--' expr
+				newTexts.put(ctx, expr1 + "\n" + space + "ldc 1" + "\n" + space + "sub");
+			else if(op.equals("++")) // '++' expr
+				newTexts.put(ctx, expr1 + "\n" + space + "ldc 1" + "\n" + space + "add");
+			//else if(op.equals("!")) // '!' expr
+				// TODO
+			else // '+' expr
+				newTexts.put(ctx, expr1);
 		}
 		
 		else if(ctx.getChildCount() == 3){
 			if (ctx.getChild(1) != ctx.expr(0)) {
-				if(ctx.IDENT() != null){	// IDENT '=' expr
-					ident = ctx.IDENT().getText();
+				op = ctx.getChild(1).getText();
+				if(op.equals("=")){ // IDENT '=' expr
+					ident = (String)hashMap.get(ctx.IDENT().getText());
 					expr1 = newTexts.get(ctx.expr(0));
-					op = ctx.getChild(1).getText();
-					newTexts.put(ctx, ident + " " + op + " " + expr1);
+					newTexts.put(ctx, expr1 + "\n" + space + "str " + ident);
 				}
 				else {
 					expr1 = newTexts.get(ctx.expr(0));
 					expr2 = newTexts.get(ctx.expr(1));
-					op = ctx.getChild(1).getText();
-					newTexts.put(ctx, expr1 + " " + op + " " + expr2);
+					String text;
+					
+					if(op.equals("*")) // expr '*' expr
+						text = space + "mult";
+					else if(op.equals("/")) // expr '/' expr
+						text = space + "div";
+					else if(op.equals("%")) // expr '%' expr
+						text = space + "mod";
+					else if(op.equals("+")) // expr '+' expr
+						text = space + "add";
+					else if(op.equals("-")) // expr '-' expr
+						text = space + "sub";
+					else if(op.equals("==")) // expr EQ expr
+						text = space + "eq";
+					else if(op.equals("!=")) // expr NE expr
+						text = space + "ne";
+					else if(op.equals("<=")) // expr LE expr
+						text = space + "le";
+					else if(op.equals("<")) // expr '<' expr
+						text = space + "lt";
+					else if(op.equals(">=")) // expr GE expr
+						text = space + "ge";
+					else if(op.equals(">")) // expr '>' expr
+						text = space + "gt";
+					else if(op.equals("and")) // expr AND expr
+						text = space + "and";
+					else // expr OR expr
+						text = space + "or";
+					newTexts.put(ctx, expr1 + "\n" + expr2 + "\n" + text);
 				}
 			}
 			
@@ -336,13 +361,14 @@ public class UcodeGenListener extends MiniCBaseListener{
 			
 			if(ctx.expr(0) != null){	// IDENT '[' expr ']'
 				expr1 = newTexts.get(ctx.expr(0));
+				newTexts.put(ctx, ident + parens1 + expr1 + parens2);
 			}
 			
 			else{	// IDENT '(' args ')'
 				expr1 = newTexts.get(ctx.args());
+				newTexts.put(ctx, space + "ldp" + "\n" + expr1 + "\n" + space + "call " + ident);
 			}
-			
-			newTexts.put(ctx, ident + parens1 + expr1 + parens2);
+		
 		}
 		
 		else{	// IDENT '[' expr ']' '=' expr
