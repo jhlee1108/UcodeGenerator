@@ -1,19 +1,14 @@
-int a;
-int c=4;
-int b[20];
+void func(int a[])
+{
+	a[1] = 3;
+}
+
 void main()
 {
+	int a[3];
 	int x;
-	int j=3;
-	x = 737;
-	j = x;
-	--x;
-	++x;
-	x = 3 + j;
-	j = 5 * 3;
-	while(x > 0) {
-		x = x / 2;
-		j = j + 1;
-		write(j);
-	}
+	a[1] = 2;
+	func(a);
+	x=a[1];
+	write(x);
 }

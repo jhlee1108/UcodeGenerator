@@ -6,22 +6,18 @@ public class MiniCPrintListener extends MiniCBaseListener {
 
 	@Override
 	public void exitProgram(MiniCParser.ProgramContext ctx) {
-		for(MiniCParser.DeclContext d : ctx.decl()){
+		for(MiniCParser.DeclContext d : ctx.decl())
 			System.out.println(newTexts.get(d));
-		}
 	}
 
 	@Override
 	public void exitDecl(MiniCParser.DeclContext ctx) {
 		String decl;
 		
-		if(ctx.var_decl() == null){
+		if(ctx.var_decl() == null)
 			decl = newTexts.get(ctx.fun_decl());
-		}
-		
-		else{
+		else
 			decl = newTexts.get(ctx.var_decl());
-		}
 		
 		newTexts.put(ctx, decl);
 	}
@@ -33,17 +29,16 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		String semicolon = ctx.getChild(ctx.getChildCount() - 1).getText();	// ;
 		String varDecl;
 		
-		if(ctx.getChildCount() == 3){	// type_spec IDENT ';'
+		if(ctx.getChildCount() == 3)	// type_spec IDENT ';'
 			varDecl = typeSpec + " " + ident + semicolon;
-		}
 
-		else if(ctx.getChildCount() == 5){	// type_spec IDENT '=' LITERAL ';'
+		else if(ctx.getChildCount() == 5) {	// type_spec IDENT '=' LITERAL ';'
 			String equal = ctx.getChild(2).getText();
 			String literal = ctx.LITERAL().getText();
 			varDecl = typeSpec + " " + ident + " " + equal + " " + literal + semicolon;
 		}
 		
-		else{	// type_spec IDENT '[' LITERAL ']' ';'
+		else {	// type_spec IDENT '[' LITERAL ']' ';'
 			String squareBracket1 = ctx.getChild(2).getText();
 			String squareBracket2 = ctx.getChild(4).getText();
 			String literal = ctx.LITERAL().getText();
@@ -74,20 +69,15 @@ public class MiniCPrintListener extends MiniCBaseListener {
 	public void exitParams(MiniCParser.ParamsContext ctx) {
 		String params;
 		
-		if(ctx.getChildCount() == 0){
+		if(ctx.getChildCount() == 0)
 			params = "";
-		}
-		
-		else if(ctx.getChild(0) != ctx.param(0)){	// VOID
+		else if(ctx.getChild(0) != ctx.param(0))	// VOID
 			params = ctx.getChild(0).getText();
-		}
-		
-		else{
+		else {
 			StringBuffer buf = new StringBuffer();
 			
-			for(MiniCParser.ParamContext p : ctx.param()){	// param (',' param)*
+			for(MiniCParser.ParamContext p : ctx.param())	// param (',' param)*
 				buf.append(newTexts.get(p) + ", ");
-			}
 			
 			params = buf + "";
 			params = params.substring(0, params.length() - 2);	// remove ", "
@@ -101,9 +91,8 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		StringBuffer param = new StringBuffer(newTexts.get(ctx.getChild(0)));	// type_spec
 		
 		param.append(" ");
-		for(int i = 1; i < ctx.getChildCount(); i++){
+		for(int i = 1; i < ctx.getChildCount(); i++)
 			param.append(ctx.getChild(i).getText());	// IDENT or IDENTT '[' ']'
-		}
 				
 		newTexts.put(ctx, param + "");
 	}
@@ -136,9 +125,9 @@ public class MiniCPrintListener extends MiniCBaseListener {
 			stmt = indent(stmt);
 			whileStmt = WHILE + " " + parens1 + expr + parens2 + "\n" + "{\n" + stmt + "}";
 		}
-		else{
+		
+		else 
 			whileStmt = WHILE + " " + parens1 + expr + parens2 + "\n" + stmt;
-		}
 		
 		newTexts.put(ctx, whileStmt);
 	}
@@ -149,17 +138,14 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		String brace2 = ctx.getChild(ctx.getChildCount() - 1).getText();
 		StringBuffer localDeclAndStmt = new StringBuffer();
 		
-		for(MiniCParser.Local_declContext l : ctx.local_decl()){
+		for(MiniCParser.Local_declContext l : ctx.local_decl())
 			localDeclAndStmt.append(indent(newTexts.get(l)));
-		}
 		
-		if(ctx.local_decl(0) != null){
+		if(ctx.local_decl(0) != null)
 			localDeclAndStmt.append("\n");
-		}
 		
-		for(MiniCParser.StmtContext s : ctx.stmt()){
+		for(MiniCParser.StmtContext s : ctx.stmt())
 			localDeclAndStmt.append(indent(newTexts.get(s)));
-		}
 		
 		newTexts.put(ctx, brace1 + "\n" + localDeclAndStmt  + brace2);
 	}
@@ -171,17 +157,16 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		String semicolon = ctx.getChild(ctx.getChildCount() - 1).getText();	// ;
 		String localDecl;
 		
-		if(ctx.getChildCount() == 3){	// type_spec IDENT ';'
+		if(ctx.getChildCount() == 3)	// type_spec IDENT ';'
 			localDecl = typeSpec + " " + ident + semicolon;
-		}
 
-		else if(ctx.getChildCount() == 5){	// type_spec IDENT '=' LITERAL ';'
+		else if(ctx.getChildCount() == 5) {	// type_spec IDENT '=' LITERAL ';'
 			String equal = ctx.getChild(2).getText();
 			String literal = ctx.LITERAL().getText();
 			localDecl = typeSpec + " " + ident + " " + equal + " " + literal + semicolon;
 		}
 		
-		else{	// type_spec IDENT '[' LITERAL ']' ';'
+		else {	// type_spec IDENT '[' LITERAL ']' ';'
 			String squareBracket1 = ctx.getChild(2).getText();
 			String squareBracket2 = ctx.getChild(4).getText();
 			String literal = ctx.LITERAL().getText();
@@ -200,26 +185,25 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		String stmt1 = newTexts.get(ctx.stmt(0));
 		String ifStmt;
 		
-		if(ctx.stmt(0).compound_stmt() == null){
+		if(ctx.stmt(0).compound_stmt() == null) {
 			stmt1 = indent(stmt1);
 			ifStmt = IF + " " + parens1 + expr + parens2 + "\n" + "{\n" + stmt1 + "}";
 		}
-		else{
-			ifStmt = IF + " " + parens1 + expr + parens2 + "\n" + stmt1;
-		}
 		
-		if(ctx.getChildCount() == 7){	// IF '(' expr ')' stmt ELSE stmt
+		else
+			ifStmt = IF + " " + parens1 + expr + parens2 + "\n" + stmt1;
+		
+		if(ctx.getChildCount() == 7) {	// IF '(' expr ')' stmt ELSE stmt
 			String ELSE = ctx.ELSE().getText();
 			String stmt2 = newTexts.get(ctx.stmt(1));
 			
-			if(ctx.stmt(1).compound_stmt() == null){
+			if(ctx.stmt(1).compound_stmt() == null) {
 				stmt2 = indent(stmt2);
 				ifStmt = ifStmt + "\n" + ELSE + "\n" + "{\n" + stmt2 + "}";
 			}
 			
-			else{
-			ifStmt = ifStmt + "\n" + ELSE + "\n" + stmt2;
-			}
+			else
+				ifStmt = ifStmt + "\n" + ELSE + "\n" + stmt2;
 		}
 		
 		newTexts.put(ctx, ifStmt);
@@ -231,14 +215,13 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		String semicolon = ctx.getChild(ctx.getChildCount() - 1).getText();
 		String returnStmt;
 		
-		if(ctx.expr() != null){	// RETURN expr ';'
+		if(ctx.expr() != null) {	// RETURN expr ';'
 			String expr = newTexts.get(ctx.expr());
 			returnStmt = RETURN + " " + expr + semicolon;
 		}
 		
-		else{	// RETURN ';'
+		else	// RETURN ';'
 			returnStmt = RETURN + semicolon;
-		}
 		
 		newTexts.put(ctx, returnStmt);
 	}
@@ -247,24 +230,24 @@ public class MiniCPrintListener extends MiniCBaseListener {
 	public void exitExpr(MiniCParser.ExprContext ctx) {
 		String expr1, expr2, op, parens1, parens2, ident;
 		
-		if(ctx.getChildCount() == 1){
+		if(ctx.getChildCount() == 1)
 			newTexts.put(ctx, ctx.getChild(0).getText());
-		}
 		
-		else if(ctx.getChildCount() == 2){
+		else if(ctx.getChildCount() == 2) {
 			op = ctx.getChild(0).getText();
 			expr1 = newTexts.get(ctx.expr(0));
 			newTexts.put(ctx, op + expr1);
 		}
 		
-		else if(ctx.getChildCount() == 3){
+		else if(ctx.getChildCount() == 3) {
 			if (ctx.getChild(1) != ctx.expr(0)) {
-				if(ctx.IDENT() != null){	// IDENT '=' expr
+				if(ctx.IDENT() != null) {	// IDENT '=' expr
 					ident = ctx.IDENT().getText();
 					expr1 = newTexts.get(ctx.expr(0));
 					op = ctx.getChild(1).getText();
 					newTexts.put(ctx, ident + " " + op + " " + expr1);
 				}
+				
 				else {
 					expr1 = newTexts.get(ctx.expr(0));
 					expr2 = newTexts.get(ctx.expr(1));
@@ -273,7 +256,7 @@ public class MiniCPrintListener extends MiniCBaseListener {
 				}
 			}
 			
-			else{	// '(' expr ')'
+			else {	// '(' expr ')'
 				parens1 = ctx.getChild(0).getText();
 				parens2 = ctx.getChild(2).getText();
 				expr1 = newTexts.get(ctx.expr(0));
@@ -281,23 +264,20 @@ public class MiniCPrintListener extends MiniCBaseListener {
 			}
 		}
 		
-		else if(ctx.getChildCount() == 4){
+		else if(ctx.getChildCount() == 4) {
 			ident = ctx.IDENT().getText();
 			parens1 = ctx.getChild(1).getText();
 			parens2 = ctx.getChild(3).getText();
 			
-			if(ctx.expr(0) != null){	// IDENT '[' expr ']'
+			if(ctx.expr(0) != null)	// IDENT '[' expr ']'
 				expr1 = newTexts.get(ctx.expr(0));
-			}
-			
-			else{	// IDENT '(' args ')'
+			else	// IDENT '(' args ')'
 				expr1 = newTexts.get(ctx.args());
-			}
 			
 			newTexts.put(ctx, ident + parens1 + expr1 + parens2);
 		}
 		
-		else{	// IDENT '[' expr ']' '=' expr
+		else {	// IDENT '[' expr ']' '=' expr
 			ident = ctx.IDENT().getText();
 			parens1 = ctx.getChild(1).getText();
 			expr1 = newTexts.get(ctx.expr(0));
@@ -314,9 +294,8 @@ public class MiniCPrintListener extends MiniCBaseListener {
 	public void exitArgs(MiniCParser.ArgsContext ctx) {
 		StringBuffer buf = new StringBuffer();
 		
-		for(MiniCParser.ExprContext e : ctx.expr()){
+		for(MiniCParser.ExprContext e : ctx.expr())
 			buf.append(newTexts.get(e) + ", ");	// expr (',' expr)*
-		}
 		
 		String args = buf + "";
 		args = args.substring(0, args.length() - 2); // remove ", "
@@ -324,13 +303,12 @@ public class MiniCPrintListener extends MiniCBaseListener {
 		newTexts.put(ctx, args);
 	}
 	
-	public String indent(String text){
+	public String indent(String text) {
 		StringBuffer buf = new StringBuffer();
 		String s[] = text.split("\n");
 		
-		for(int i = 0; i < s.length; i++){
+		for(int i = 0; i < s.length; i++)
 			buf.append("...." + s[i] + "\n");
-		}
 		
 		return buf + "";
 	}
