@@ -2,7 +2,7 @@
 import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
 public class MiniCPrintListener extends MiniCBaseListener {
-	ParseTreeProperty<String> newTexts = new ParseTreeProperty<String>();
+	private ParseTreeProperty<String> newTexts = new ParseTreeProperty<String>();
 
 	@Override
 	public void exitProgram(MiniCParser.ProgramContext ctx) {
