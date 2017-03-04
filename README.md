@@ -1,4 +1,4 @@
-# UcodeGenerator
+# Ucode Generator
 Print MiniC & Make MiniC to Ucode by using Antlr
 
 ## ANTLR 4 IDE setup in Eclipse Luna
