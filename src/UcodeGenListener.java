@@ -1,6 +1,7 @@
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
 
@@ -12,6 +13,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 	private int offset = 1;
 	private int labelNumber = 0;
 	private boolean haveReturnStmt;
+	private static int depth = 1;
 	
 	@Override
 	public void enterProgram(MiniCParser.ProgramContext ctx) {
@@ -27,7 +29,7 @@ public class UcodeGenListener extends MiniCBaseListener{
 		FileWriter f;
 		
 		try {
-			f = new FileWriter("test.txt");
+			f = new FileWriter("result.txt");
 			for(MiniCParser.DeclContext d : ctx.decl()) {
 				f.write(newTexts.get(d) + "\n");
 				System.out.println(newTexts.get(d));
@@ -40,6 +42,8 @@ public class UcodeGenListener extends MiniCBaseListener{
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		System.out.println(globalVar.get("main"));
 	}
 
 	@Override
@@ -96,6 +100,8 @@ public class UcodeGenListener extends MiniCBaseListener{
 		localVarList.add(new HashMap<String, Object>());
 		localVarList.get(localVarList.size() - 1).put("localSize", 0);
 		haveReturnStmt = false;
+		globalVar.put("funcIdent", ctx.IDENT().getText());
+		globalVar.put(ctx.IDENT().getText(), new Node(ctx.IDENT().getText()));
 		super.enterFun_decl(ctx);
 	}
 
@@ -414,7 +420,14 @@ public class UcodeGenListener extends MiniCBaseListener{
 			else {	// IDENT '(' args ')'
 				ident = ctx.IDENT().getText();
 				expr1 = newTexts.get(ctx.args());
-				newTexts.put(ctx, space + "ldp" + "\n" + expr1 + "\n" + space + "call " + ident);
+				newTexts.put(ctx, space + "ldp" + "\n" + expr1 + "\n" + space + "call " + ident);			
+				
+				Node parentNode = (Node)globalVar.get(globalVar.get("funcIdent"));
+				if(globalVar.containsKey(ident) && !globalVar.get("funcIdent").equals(ident))
+					parentNode.add((Node)globalVar.get(ident));
+				else
+					parentNode.add(new Node(ident));
+				globalVar.put((String)globalVar.get("funcIdent"), parentNode);
 			}
 		
 		}
@@ -455,9 +468,55 @@ public class UcodeGenListener extends MiniCBaseListener{
 			buf.append(newTexts.get(e) + "\n");
 		
 		String args = buf + "";
-		args = args.substring(0, args.length() - 1); // remove "\n"
+		if(args.length() != 0)
+			args = args.substring(0, args.length() - 1); // remove "\n"
 		
 		newTexts.put(ctx, args);
+	}
+
+	private class Node { // Node for make function call tree
+		String ident;
+		ArrayList<Node> children;
+		
+		public Node(String ident) {
+			this.ident = ident;
+			children = new ArrayList<Node>();
+		}
+		
+		public void add(Node child) {
+			children.add(child);
+		}
+
+		@Override
+		public String toString() {
+			String tab = "";
+			
+			for(int j = 0; j < 11-ident.length(); j++)
+				tab += " ";
+			StringBuffer buf = new StringBuffer(ident + tab);
+			
+			tab = space;
+			if(depth > 1){
+				for(int i = 1; i < depth; i ++) {
+					tab = tab + " | " + space;
+				}
+			}
+			
+			if(children.size() != 0) {
+				depth++;
+				buf.append("---" + children.get(0) + "\n");
+				depth--;
+				for(int i = 1; i < children.size(); i++) {
+					buf.append(tab + " |-");
+					depth++;
+					buf.append(children.get(i) + "\n");
+					depth--;
+				}
+				return buf.substring(0, buf.length() - 1);
+			}
+			return buf.toString();
+		}
+		
 	}
 	
 }
